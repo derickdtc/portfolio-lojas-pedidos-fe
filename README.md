@@ -12,6 +12,25 @@ Frontend web em React + Vite + TypeScript + Tailwind CSS para controle de estoqu
 - Axios
 - vite-plugin-pwa
 
+## Ambientes
+
+O frontend usa `VITE_API_BASE_URL` para decidir para qual API enviar as requisições.
+
+- `.env.local`: ambiente local, ignorado pelo Git, apontando para a API no seu PC.
+- `.env.production`: ambiente de produção, usado no build publicado, apontando para a API do Railway.
+
+Exemplo local:
+
+```bash
+VITE_API_BASE_URL=http://localhost:3333
+```
+
+Exemplo de produção:
+
+```bash
+VITE_API_BASE_URL=https://portfolio-lojas-pedidos-production.up.railway.app
+```
+
 ## Como rodar
 
 Instale as dependências:
@@ -20,28 +39,42 @@ Instale as dependências:
 pnpm install
 ```
 
-Crie o arquivo `.env` a partir do exemplo:
+Crie o arquivo `.env.local` a partir do exemplo:
 
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
-Configure a URL da API:
-
-```bash
-VITE_API_BASE_URL=https://sua-api.up.railway.app
-```
-
-Execute em desenvolvimento:
+Execute em desenvolvimento local:
 
 ```bash
 pnpm dev
 ```
 
+Você também pode usar o alias explícito:
+
+```bash
+pnpm dev:local
+```
+
 ## Build de produção
+
+O build padrão usa `.env.production`:
 
 ```bash
 pnpm build
+```
+
+Alias explícito:
+
+```bash
+pnpm build:production
+```
+
+Para gerar um build local usando `.env.local`:
+
+```bash
+pnpm build:local
 ```
 
 Para visualizar o build:

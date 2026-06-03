@@ -1,5 +1,6 @@
-import { Minus, Plus, RefreshCw, Search, Send, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Minus, Plus, RefreshCw, Save, Search, Send, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import { Alert } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
@@ -7,10 +8,15 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { IconButton } from '../components/ui/IconButton';
 import { FormField } from '../components/ui/FormField';
 import { getApiErrorMessage } from '../services/api';
-import { createOrder } from '../services/orderService';
+import { createOrder, updateOrder } from '../services/orderService';
 import { getProducts } from '../services/productService';
 import type { StockProduct } from '../types/api';
 import { formatCurrency } from '../utils/formatters';
+import {
+  clearOrderEditDraft,
+  readOrderEditDraft,
+  type OrderEditDraft
+} from '../utils/orderEditDraft';
 import { clampQuantity, getStockTone, normalizeSearch } from '../utils/stock';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 
@@ -18,6 +24,10 @@ type SelectedItem = {
   product: StockProduct;
   quantity: number;
   lineTotal: number;
+};
+
+type StockPageLocationState = {
+  orderEditDraft?: OrderEditDraft;
 };
 
 const stockToneClasses = {
@@ -98,8 +108,13 @@ function ProductCard({
 }
 
 export function StockPage() {
+  const location = useLocation();
+  const hasLoadedEditDraftRef = useRef(false);
   const [products, setProducts] = useState<StockProduct[]>([]);
   const [selectedQuantities, setSelectedQuantities] = useState<Record<number, number>>({});
+  const [customerName, setCustomerName] = useState('');
+  const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
+  const [editingProtocol, setEditingProtocol] = useState('');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search);
   const [isLoading, setIsLoading] = useState(true);
@@ -130,6 +145,32 @@ export function StockPage() {
   useEffect(() => {
     void loadProducts();
   }, [loadProducts]);
+
+  useEffect(() => {
+    if (hasLoadedEditDraftRef.current) {
+      return;
+    }
+
+    hasLoadedEditDraftRef.current = true;
+
+    const locationState = location.state as StockPageLocationState | null;
+    const draft = locationState?.orderEditDraft ?? readOrderEditDraft();
+
+    if (!draft) {
+      return;
+    }
+
+    setSelectedQuantities(
+      draft.items.reduce<Record<number, number>>((next, item) => {
+        next[item.productId] = item.quantity;
+        return next;
+      }, {}),
+    );
+    setCustomerName(draft.customerName);
+    setEditingOrderId(draft.orderId);
+    setEditingProtocol(draft.protocol);
+    setMessage(`Editando ${draft.protocol}. O protocolo será mantido ao salvar.`);
+  }, [location.state]);
 
   const filteredProducts = useMemo(() => {
     const term = normalizeSearch(debouncedSearch);
@@ -196,7 +237,7 @@ export function StockPage() {
     });
   }
 
-  async function handleCreateOrder() {
+  async function handleSubmitOrder() {
     if (selectedItems.length === 0 || isSubmitting) {
       return;
     }
@@ -205,21 +246,47 @@ export function StockPage() {
     setErrorMessage('');
     setIsSubmitting(true);
 
+    const normalizedCustomerName = customerName.trim();
+    const request = {
+      ...(normalizedCustomerName ? { customerName: normalizedCustomerName } : {}),
+      items: selectedItems.map((item) => ({
+        productId: item.product.id,
+        quantity: item.quantity
+      }))
+    };
+
     try {
-      const order = await createOrder({
-        items: selectedItems.map((item) => ({
-          productId: item.product.id,
-          quantity: item.quantity
-        }))
-      });
+      const order = editingOrderId ? await updateOrder(editingOrderId, request) : await createOrder(request);
+      const successMessage = editingOrderId
+        ? `${editingProtocol || `Pedido #${order.id}`} atualizado.`
+        : `Pedido #${order.id} criado: ${formatCurrency(order.totalAmount)}.`;
+
       setSelectedQuantities({});
-      setMessage(`Pedido #${order.id} criado: ${formatCurrency(order.totalAmount)}.`);
+      setCustomerName('');
+      setEditingOrderId(null);
+      setEditingProtocol('');
+      clearOrderEditDraft();
+      setMessage(successMessage);
       await loadProducts(true);
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error, 'Não foi possível criar o pedido.'));
+      setErrorMessage(
+        getApiErrorMessage(
+          error,
+          editingOrderId ? 'Não foi possível salvar as alterações.' : 'Não foi possível criar o pedido.',
+        ),
+      );
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function handleCancelEdit() {
+    setSelectedQuantities({});
+    setCustomerName('');
+    setEditingOrderId(null);
+    setEditingProtocol('');
+    setMessage('');
+    clearOrderEditDraft();
   }
 
   return (
@@ -227,7 +294,9 @@ export function StockPage() {
       <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="mb-2 text-xs font-extrabold uppercase text-clay">Estoque da loja</p>
-          <h1 className="text-3xl font-black leading-tight text-ink">Criar pedido</h1>
+          <h1 className="text-3xl font-black leading-tight text-ink">
+            {editingProtocol ? 'Editar pedido' : 'Criar pedido'}
+          </h1>
         </div>
         {/*<Button
           className="w-full sm:w-auto"
@@ -270,21 +339,48 @@ export function StockPage() {
 
           <div className="rounded-lg border border-line bg-white p-4 shadow-soft">
             <div className="flex items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0 flex-1">
                 <h2 className="text-lg font-black text-ink">Pedido</h2>
+                {editingProtocol ? (
+                  <p className="mt-1 text-xs font-extrabold uppercase text-clay">{editingProtocol}</p>
+                ) : null}
                 <p className="mt-1 text-sm font-bold text-[#5f6b63]">
                   {selectedItems.length} itens - {formatCurrency(selectedTotal)}
                 </p>
+                <div className="mt-3">
+                  <FormField
+                    autoComplete="organization"
+                    //icon={<Store size={18} />}
+                    label="Cliente"
+                    maxLength={120}
+                    onChange={(event) => setCustomerName(event.target.value)}
+                    placeholder="Digite aqui o nome do destinatário"
+                    value={customerName}
+                  />
+                </div>
               </div>
-              {selectedItems.length > 0 ? (
-                <Button
-                  className="!min-h-9 px-3 py-1.5"
-                  onClick={() => setSelectedQuantities({})}
-                  type="button"
-                  variant="secondary"
-                >
-                  Limpar
-                </Button>
+              {selectedItems.length > 0 || editingProtocol ? (
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                  {editingProtocol ? (
+                    <Button
+                      className="!min-h-9 px-3 py-1.5"
+                      onClick={handleCancelEdit}
+                      type="button"
+                      variant="secondary"
+                    >
+                      Cancelar edição
+                    </Button>
+                  ) : null}
+                  <Button
+                    className="!min-h-9 px-3 py-1.5"
+                    disabled={selectedItems.length === 0}
+                    onClick={() => setSelectedQuantities({})}
+                    type="button"
+                    variant="secondary"
+                  >
+                    Limpar
+                  </Button>
+                </div>
               ) : null}
             </div>
 
@@ -322,12 +418,12 @@ export function StockPage() {
               <Button
                 className="w-full"
                 disabled={selectedItems.length === 0}
-                icon={<Send size={17} />}
+                icon={editingOrderId ? <Save size={17} /> : <Send size={17} />}
                 isLoading={isSubmitting}
-                onClick={handleCreateOrder}
+                onClick={handleSubmitOrder}
                 type="button"
               >
-                Criar pedido
+                {editingOrderId ? 'Salvar alterações' : 'Criar pedido'}
               </Button>
             </div>
           </div>
@@ -406,7 +502,7 @@ export function StockPage() {
                 disabled={selectedItems.length === 0}
                 icon={<Send size={17} />}
                 isLoading={isSubmitting}
-                onClick={handleCreateOrder}
+                onClick={handleSubmitOrder}
                 type="button"
               >
                 Criar pedido
