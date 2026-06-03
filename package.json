@@ -4,8 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "vite --mode development",
+    "dev:local": "vite --mode development",
+    "build": "tsc -b && vite build --mode production",
+    "build:production": "tsc -b && vite build --mode production",
+    "build:local": "tsc -b && vite build --mode development",
     "preview": "vite preview",
     "typecheck": "tsc -b"
   },

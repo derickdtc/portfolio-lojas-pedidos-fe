@@ -42,7 +42,14 @@ export type CreateOrderItemRequest = {
 };
 
 export type CreateOrderRequest = {
+  customerName?: string;
   items: CreateOrderItemRequest[];
+};
+
+export type UpdateOrderRequest = CreateOrderRequest;
+
+export type DeleteOrdersRequest = {
+  orderIds: number[];
 };
 
 export type OrderItem = {
@@ -63,6 +70,7 @@ export type OrderSummary = {
   id: number;
   createdAtUtc: string;
   createdByUsername: string;
+  customerName?: string | null;
   status: string;
   totalAmount: number;
   itemsCount: number;
