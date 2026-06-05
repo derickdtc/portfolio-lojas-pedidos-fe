@@ -37,6 +37,26 @@ export function getApiErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+export function normalizeApiArray<T>(payload: unknown, keys: string[] = []): T[] {
+  if (Array.isArray(payload)) {
+    return payload as T[];
+  }
+
+  if (payload && typeof payload === 'object') {
+    const record = payload as Record<string, unknown>;
+
+    for (const key of ['$values', ...keys, 'items', 'data', 'results', 'value']) {
+      const value = record[key];
+
+      if (Array.isArray(value)) {
+        return value as T[];
+      }
+    }
+  }
+
+  throw new Error('A API retornou uma lista em um formato inesperado.');
+}
+
 export function hasApiBaseUrl() {
   return Boolean(API_BASE_URL);
 }

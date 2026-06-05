@@ -1,15 +1,23 @@
-import { api } from './api';
+import { api, normalizeApiArray } from './api';
 import type {
   CreateOrderRequest,
   DeleteOrdersRequest,
+  OrderItem,
   OrderResponse,
   OrderSummary,
   UpdateOrderRequest
 } from '../types/api';
 
+function normalizeOrderSummary(order: OrderSummary): OrderSummary {
+  return {
+    ...order,
+    items: normalizeApiArray<OrderItem>((order as { items?: unknown }).items ?? [], ['orderItems'])
+  };
+}
+
 export async function getOrders() {
-  const { data } = await api.get<OrderSummary[]>('/api/orders');
-  return data;
+  const { data } = await api.get<unknown>('/api/orders');
+  return normalizeApiArray<OrderSummary>(data, ['orders']).map(normalizeOrderSummary);
 }
 
 export async function createOrder(request: CreateOrderRequest) {

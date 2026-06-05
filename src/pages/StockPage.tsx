@@ -190,7 +190,7 @@ export function StockPage() {
         product.csosn,
         product.ncm,
         product.cst
-      ].some((value) => value.toLowerCase().includes(term)),
+      ].some((value) => normalizeSearch(value ?? '').includes(term)),
     );
   }, [debouncedSearch, products]);
 
