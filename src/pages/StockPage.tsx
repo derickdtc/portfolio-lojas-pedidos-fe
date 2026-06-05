@@ -113,6 +113,7 @@ export function StockPage() {
   const [products, setProducts] = useState<StockProduct[]>([]);
   const [selectedQuantities, setSelectedQuantities] = useState<Record<number, number>>({});
   const [customerName, setCustomerName] = useState('');
+  const [observations, setObservations] = useState('');
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
   const [editingProtocol, setEditingProtocol] = useState('');
   const [search, setSearch] = useState('');
@@ -167,6 +168,7 @@ export function StockPage() {
       }, {}),
     );
     setCustomerName(draft.customerName);
+    setObservations(draft.observations);
     setEditingOrderId(draft.orderId);
     setEditingProtocol(draft.protocol);
     setMessage(`Editando ${draft.protocol}. O protocolo será mantido ao salvar.`);
@@ -247,8 +249,10 @@ export function StockPage() {
     setIsSubmitting(true);
 
     const normalizedCustomerName = customerName.trim();
+    const normalizedObservations = observations.trim();
     const request = {
       ...(normalizedCustomerName ? { customerName: normalizedCustomerName } : {}),
+      ...(normalizedObservations ? { observations: normalizedObservations } : {}),
       items: selectedItems.map((item) => ({
         productId: item.product.id,
         quantity: item.quantity
@@ -263,6 +267,7 @@ export function StockPage() {
 
       setSelectedQuantities({});
       setCustomerName('');
+      setObservations('');
       setEditingOrderId(null);
       setEditingProtocol('');
       clearOrderEditDraft();
@@ -283,6 +288,7 @@ export function StockPage() {
   function handleCancelEdit() {
     setSelectedQuantities({});
     setCustomerName('');
+    setObservations('');
     setEditingOrderId(null);
     setEditingProtocol('');
     setMessage('');
@@ -412,6 +418,15 @@ export function StockPage() {
                 </p>
               )}
             </div>
+
+            <textarea
+              aria-label="Observações"
+              className="mt-4 min-h-24 w-full resize-y rounded-lg border border-line bg-cream px-3 py-3 text-m font-semibold text-ink outline-none transition placeholder:text-[#7d877f] focus:border-forest focus:ring-2 focus:ring-forest/15"
+              maxLength={1000}
+              onChange={(event) => setObservations(event.target.value)}
+              placeholder="Observações"
+              value={observations}
+            />
 
             <div className="mt-4 space-y-3">
               {message ? <Alert>{message}</Alert> : null}

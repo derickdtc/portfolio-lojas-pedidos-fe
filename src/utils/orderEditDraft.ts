@@ -7,6 +7,7 @@ export type OrderEditDraft = {
   orderId: number;
   protocol: string;
   customerName: string;
+  observations: string;
   items: {
     productId: number;
     quantity: number;
@@ -18,6 +19,7 @@ export function createOrderEditDraft(order: OrderSummary): OrderEditDraft {
     orderId: order.id,
     protocol: getProtocol(order.id),
     customerName: order.customerName ?? '',
+    observations: order.observations ?? '',
     items: order.items
       .filter((item) => item.productId !== null)
       .map((item) => ({
