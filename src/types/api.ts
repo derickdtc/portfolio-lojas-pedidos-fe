@@ -43,6 +43,7 @@ export type CreateOrderItemRequest = {
 
 export type CreateOrderRequest = {
   customerName?: string;
+  observations?: string;
   items: CreateOrderItemRequest[];
 };
 
@@ -71,6 +72,7 @@ export type OrderSummary = {
   createdAtUtc: string;
   createdByUsername: string;
   customerName?: string | null;
+  observations?: string | null;
   status: string;
   totalAmount: number;
   itemsCount: number;

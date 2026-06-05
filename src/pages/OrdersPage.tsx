@@ -90,6 +90,11 @@ function openOrdersPdf(orders: OrderSummary[]) {
                 .join('')}
             </tbody>
           </table>
+          ${
+            order.observations
+              ? `<div class="notes"><b>Observações</b><p>${escapeHtml(order.observations)}</p></div>`
+              : ''
+          }
         </article>
       `,
     )
@@ -113,6 +118,9 @@ function openOrdersPdf(orders: OrderSummary[]) {
           table { border-collapse: collapse; width: 100%; }
           th, td { border-bottom: 1px solid #ece6db; font-size: 12px; padding: 9px 8px; text-align: left; }
           th { color: #355243; font-size: 11px; text-transform: uppercase; }
+          .notes { background: #fbfaf7; border: 1px solid #ece6db; border-radius: 8px; margin-top: 14px; padding: 10px; }
+          .notes b { color: #355243; display: block; font-size: 11px; margin-bottom: 4px; text-transform: uppercase; }
+          .notes p { color: #17231c; font-size: 12px; line-height: 1.5; margin: 0; white-space: pre-wrap; }
           @media print { body { margin: 0; } .order { page-break-inside: avoid; } }
         </style>
       </head>
@@ -136,11 +144,8 @@ function OrderCard({ order, onEdit }: { order: OrderSummary; onEdit: (order: Ord
           <p className="mt-1 text-xs font-bold text-[#738075]">{formatDateTime(order.createdAtUtc)}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <span className="rounded-lg bg-[#e2f2e8] px-3 py-1.5 text-xs font-black uppercase text-forest">
-            {order.status}
-          </span>
           <IconButton
-            className="!h-9 !w-9"
+            className="!h-12 !w-12"
             icon={<Edit3 size={16} />}
             label={`Editar ${getProtocol(order.id)}`}
             onClick={() => onEdit(order)}
@@ -188,6 +193,15 @@ function OrderCard({ order, onEdit }: { order: OrderSummary; onEdit: (order: Ord
           </div>
         ))}
       </div>
+
+      {order.observations ? (
+        <div className="mt-3 rounded-lg border border-[#ece6db] bg-cream p-3">
+          <p className="text-xs font-extrabold uppercase text-moss">Observações</p>
+          <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-5 text-ink">
+            {order.observations}
+          </p>
+        </div>
+      ) : null}
     </article>
   );
 }
