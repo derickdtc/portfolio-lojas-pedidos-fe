@@ -1,9 +1,9 @@
-import { api } from './api';
+import { api, normalizeApiArray } from './api';
 import type { ProductImportResponse, StockProduct } from '../types/api';
 
 export async function getProducts() {
-  const { data } = await api.get<StockProduct[]>('/api/products');
-  return data;
+  const { data } = await api.get<unknown>('/api/products');
+  return normalizeApiArray<StockProduct>(data, ['products']);
 }
 
 export async function importProducts(file: File) {
@@ -11,5 +11,8 @@ export async function importProducts(file: File) {
   formData.append('file', file);
 
   const { data } = await api.post<ProductImportResponse>('/api/products/import', formData);
-  return data;
+  return {
+    ...data,
+    warnings: normalizeApiArray<string>(data.warnings ?? [], ['warnings'])
+  };
 }
