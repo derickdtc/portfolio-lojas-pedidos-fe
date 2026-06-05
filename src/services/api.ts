@@ -1,6 +1,20 @@
 import axios, { AxiosError } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim();
+function normalizeApiBaseUrl(value: string | undefined) {
+  const trimmedValue = value?.trim();
+
+  if (!trimmedValue) {
+    return '/';
+  }
+
+  if (/^https?:\/\//i.test(trimmedValue) || trimmedValue.startsWith('/')) {
+    return trimmedValue;
+  }
+
+  return `https://${trimmedValue}`;
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 export const AUTH_EXPIRED_EVENT = 'lojas-pedidos.auth-expired';
 
 export const api = axios.create({
