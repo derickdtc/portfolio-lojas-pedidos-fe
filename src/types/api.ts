@@ -1,6 +1,11 @@
 export type AuthUser = {
   id: number;
   username: string;
+  storeName?: string | null;
+  store?: {
+    name?: string | null;
+    displayName?: string | null;
+  } | null;
 };
 
 export type LoginRequest = {
@@ -39,6 +44,7 @@ export type ProductImportResponse = {
 export type CreateOrderItemRequest = {
   productId: number;
   quantity: number;
+  salePrice?: number;
 };
 
 export type CreateOrderRequest = {
