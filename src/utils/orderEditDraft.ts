@@ -11,6 +11,7 @@ export type OrderEditDraft = {
   items: {
     productId: number;
     quantity: number;
+    salePrice: number;
   }[];
 };
 
@@ -24,7 +25,8 @@ export function createOrderEditDraft(order: OrderSummary): OrderEditDraft {
       .filter((item) => item.productId !== null)
       .map((item) => ({
         productId: item.productId as number,
-        quantity: item.quantity
+        quantity: item.quantity,
+        salePrice: item.salePrice
       }))
   };
 }

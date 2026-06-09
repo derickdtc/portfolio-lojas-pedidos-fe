@@ -1,4 +1,4 @@
-import { Minus, Plus, RefreshCw, Save, Search, Send, Trash2 } from 'lucide-react';
+import { Edit3, Minus, Plus, RefreshCw, Save, Search, Send, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { IconButton } from '../components/ui/IconButton';
 import { FormField } from '../components/ui/FormField';
+import { useAuth } from '../contexts/AuthContext';
 import { getApiErrorMessage } from '../services/api';
 import { createOrder, updateOrder } from '../services/orderService';
 import { getProducts } from '../services/productService';
@@ -23,6 +24,7 @@ import { useDebouncedValue } from '../hooks/useDebouncedValue';
 type SelectedItem = {
   product: StockProduct;
   quantity: number;
+  salePrice: number;
   lineTotal: number;
 };
 
@@ -36,16 +38,156 @@ const stockToneClasses = {
   low: 'bg-[#ffe0dc]'
 };
 
+function normalizePrice(value: string) {
+  const price = Number(value.replace(',', '.'));
+  return Number.isFinite(price) && price >= 0 ? Math.round(price * 100) / 100 : null;
+}
+
+function sanitizePriceInput(value: string) {
+  const withDot = value.replace(',', '.');
+  const [integerPart = '', ...decimalParts] = withDot.split('.');
+  const onlyIntegers = integerPart.replace(/\D/g, '');
+  const onlyDecimals = decimalParts.join('').replace(/\D/g, '').slice(0, 2);
+  const safeIntegers = onlyIntegers.replace(/^0+(?=\d)/, '') || '0';
+
+  return withDot.includes('.') ? `${safeIntegers}.${onlyDecimals}` : safeIntegers;
+}
+
+function getStoreDisplayName(userStoreName?: string | null, storeName?: string | null, storeDisplayName?: string | null) {
+  return userStoreName?.trim() || storeDisplayName?.trim() || storeName?.trim() || 'LOJA';
+}
+
+function PriceInput({
+  ariaLabel,
+  className,
+  onChange,
+  value
+}: {
+  ariaLabel: string;
+  className: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [draft, setDraft] = useState(value.toFixed(2));
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (!isFocused) {
+      setDraft(value.toFixed(2));
+    }
+  }, [isFocused, value]);
+
+  function setCaret(position: number) {
+    window.requestAnimationFrame(() => {
+      inputRef.current?.setSelectionRange(position, position);
+    });
+  }
+
+  function updateDraft(nextValue: string, nextCaret?: number) {
+    const sanitized = sanitizePriceInput(nextValue);
+    const nextPrice = normalizePrice(sanitized);
+
+    setDraft(sanitized);
+
+    if (nextPrice !== null) {
+      onChange(nextPrice);
+    }
+
+    if (nextCaret !== undefined) {
+      setCaret(nextCaret);
+    }
+  }
+
+  function finishEdit() {
+    setIsFocused(false);
+    setDraft((current) => (normalizePrice(current) ?? value).toFixed(2));
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      aria-label={ariaLabel}
+      className={className}
+      inputMode="decimal"
+      onBlur={finishEdit}
+      onChange={(event) => updateDraft(event.target.value)}
+      onFocus={() => setIsFocused(true)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.currentTarget.blur();
+          return;
+        }
+
+        const dotIndex = draft.indexOf('.');
+
+        if (dotIndex === -1) {
+          return;
+        }
+
+        const start = event.currentTarget.selectionStart ?? 0;
+        const end = event.currentTarget.selectionEnd ?? start;
+        const hasSelection = start !== end;
+
+        if (event.key === 'Backspace' && !hasSelection && start === dotIndex + 1) {
+          event.preventDefault();
+          setCaret(dotIndex);
+          return;
+        }
+
+        if (event.key === 'Delete' && !hasSelection && start === dotIndex) {
+          event.preventDefault();
+          setCaret(dotIndex + 1);
+          return;
+        }
+
+        if (!/^\d$/.test(event.key) || hasSelection) {
+          return;
+        }
+
+        const integerPart = draft.slice(0, dotIndex);
+
+        if (start === 0 && integerPart === '0') {
+          event.preventDefault();
+          updateDraft(`${event.key}${draft.slice(dotIndex)}`, 1);
+          return;
+        }
+
+        if (start > dotIndex) {
+          event.preventDefault();
+
+          const decimalIndex = start - dotIndex - 1;
+
+          if (decimalIndex >= 2) {
+            setCaret(dotIndex + 3);
+            return;
+          }
+
+          const decimals = draft.slice(dotIndex + 1).padEnd(2, '0').slice(0, 2).split('');
+          decimals[decimalIndex] = event.key;
+          updateDraft(`${integerPart}.${decimals.join('')}`, Math.min(start + 1, dotIndex + 3));
+        }
+      }}
+      value={draft}
+    />
+  );
+}
+
 function ProductCard({
   onChangeQuantity,
+  onChangeSalePrice,
   product,
+  salePrice,
   selectedQuantity
 }: {
   product: StockProduct;
+  salePrice: number;
   selectedQuantity: number;
   onChangeQuantity: (quantity: number) => void;
+  onChangeSalePrice: (salePrice: number) => void;
 }) {
   const stockTone = getStockTone(product.stockBalance);
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
 
   return (
     <article className="rounded-lg border border-line bg-white p-3">
@@ -57,7 +199,25 @@ function ProductCard({
             {product.reference ? ` · Ref. ${product.reference}` : ''}
           </p>
         </div>
-        <p className="shrink-0 text-xs font-black text-forest sm:text-sm">{formatCurrency(product.salePrice)}</p>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <IconButton
+            className="!h-8 !w-8"
+            icon={<Edit3 size={15} />}
+            label={`Editar preço de ${product.description}`}
+            onClick={() => setIsEditingPrice(true)}
+            tone="light"
+          />
+          {isEditingPrice ? (
+            <PriceInput
+              ariaLabel={`Preço de ${product.description}`}
+              className="h-8 w-24 rounded-lg border border-line bg-cream px-2 text-right text-xs font-black text-ink outline-none focus:border-forest focus:ring-2 focus:ring-forest/15"
+              onChange={onChangeSalePrice}
+              value={salePrice}
+            />
+          ) : (
+            <p className="text-right text-xs font-black text-forest sm:text-sm">{formatCurrency(salePrice)}</p>
+          )}
+        </div>
       </div>
 
       <div className="mt-2 flex items-start justify-between gap-3">
@@ -109,9 +269,11 @@ function ProductCard({
 
 export function StockPage() {
   const location = useLocation();
+  const { user } = useAuth();
   const hasLoadedEditDraftRef = useRef(false);
   const [products, setProducts] = useState<StockProduct[]>([]);
   const [selectedQuantities, setSelectedQuantities] = useState<Record<number, number>>({});
+  const [salePriceOverrides, setSalePriceOverrides] = useState<Record<number, number>>({});
   const [customerName, setCustomerName] = useState('');
   const [observations, setObservations] = useState('');
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
@@ -167,6 +329,12 @@ export function StockPage() {
         return next;
       }, {}),
     );
+    setSalePriceOverrides(
+      draft.items.reduce<Record<number, number>>((next, item) => {
+        next[item.productId] = item.salePrice;
+        return next;
+      }, {}),
+    );
     setCustomerName(draft.customerName);
     setObservations(draft.observations);
     setEditingOrderId(draft.orderId);
@@ -198,15 +366,17 @@ export function StockPage() {
     return products
       .map((product) => {
         const quantity = selectedQuantities[product.id] ?? 0;
+        const salePrice = salePriceOverrides[product.id] ?? product.salePrice;
 
         return {
           product,
           quantity,
-          lineTotal: quantity * product.salePrice
+          salePrice,
+          lineTotal: quantity * salePrice
         };
       })
       .filter((item) => item.quantity > 0);
-  }, [products, selectedQuantities]);
+  }, [products, salePriceOverrides, selectedQuantities]);
 
   const totalItems = useMemo(
     () => products.reduce((total, product) => total + product.stockBalance, 0),
@@ -214,6 +384,7 @@ export function StockPage() {
   );
   const selectedUnits = selectedItems.reduce((total, item) => total + item.quantity, 0);
   const selectedTotal = selectedItems.reduce((total, item) => total + item.lineTotal, 0);
+  const storeDisplayName = getStoreDisplayName(user?.storeName, user?.store?.name, user?.store?.displayName);
 
   function setProductQuantity(product: StockProduct, quantity: number) {
     const nextQuantity = clampQuantity(quantity);
@@ -237,6 +408,18 @@ export function StockPage() {
       delete next[productId];
       return next;
     });
+    setSalePriceOverrides((current) => {
+      const next = { ...current };
+      delete next[productId];
+      return next;
+    });
+  }
+
+  function setProductSalePrice(productId: number, salePrice: number) {
+    setSalePriceOverrides((current) => ({
+      ...current,
+      [productId]: salePrice
+    }));
   }
 
   async function handleSubmitOrder() {
@@ -255,7 +438,8 @@ export function StockPage() {
       ...(normalizedObservations ? { observations: normalizedObservations } : {}),
       items: selectedItems.map((item) => ({
         productId: item.product.id,
-        quantity: item.quantity
+        quantity: item.quantity,
+        salePrice: item.salePrice
       }))
     };
 
@@ -266,6 +450,7 @@ export function StockPage() {
         : `Pedido #${order.id} criado: ${formatCurrency(order.totalAmount)}.`;
 
       setSelectedQuantities({});
+      setSalePriceOverrides({});
       setCustomerName('');
       setObservations('');
       setEditingOrderId(null);
@@ -287,6 +472,7 @@ export function StockPage() {
 
   function handleCancelEdit() {
     setSelectedQuantities({});
+    setSalePriceOverrides({});
     setCustomerName('');
     setObservations('');
     setEditingOrderId(null);
@@ -299,8 +485,8 @@ export function StockPage() {
     <section className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
       <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="mb-2 text-xs font-extrabold uppercase text-clay">Estoque da loja</p>
-          <h1 className="text-3xl font-black leading-tight text-ink">
+          <p className="mb-2 text-2xl font-black uppercase text-clay">{storeDisplayName}</p>
+          <h1 className="text-2xl font-black leading-tight text-ink">
             {editingProtocol ? 'Editar pedido' : 'Criar pedido'}
           </h1>
         </div>
@@ -399,9 +585,19 @@ export function StockPage() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-extrabold text-ink">{item.product.description}</p>
-                      <p className="mt-0.5 text-xs font-bold text-[#5f6b63]">
-                        {item.quantity} un. - {formatCurrency(item.lineTotal)}
-                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-bold text-[#5f6b63]">
+                        <span>{item.quantity} un.</span>
+                        <label className="flex items-center gap-1">
+                          <span>Preço</span>
+                          <PriceInput
+                            ariaLabel={`Preço de ${item.product.description} no pedido`}
+                            className="h-8 w-24 rounded-lg border border-line bg-white px-2 text-right text-xs font-black text-ink outline-none focus:border-forest focus:ring-2 focus:ring-forest/15"
+                            onChange={(nextPrice) => setProductSalePrice(item.product.id, nextPrice)}
+                            value={item.salePrice}
+                          />
+                        </label>
+                        <span>{formatCurrency(item.lineTotal)}</span>
+                      </div>
                     </div>
                     <IconButton
                       className="!h-9 !w-9"
@@ -456,7 +652,9 @@ export function StockPage() {
               <ProductCard
                 key={product.id}
                 onChangeQuantity={(quantity) => setProductQuantity(product, quantity)}
+                onChangeSalePrice={(salePrice) => setProductSalePrice(product.id, salePrice)}
                 product={product}
+                salePrice={salePriceOverrides[product.id] ?? product.salePrice}
                 selectedQuantity={selectedQuantities[product.id] ?? 0}
               />
             ))}
