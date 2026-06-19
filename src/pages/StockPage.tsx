@@ -360,7 +360,7 @@ function ProductImageViewer({
 
       <img
         alt={`${product.description} - imagem ${imageIndex + 1}`}
-        className="max-h-[88vh] max-w-[92vw] rounded-lg object-contain"
+        className="h-screen w-screen object-contain sm:h-[92vh] sm:w-[94vw] sm:rounded-lg"
         onClick={(event) => event.stopPropagation()}
         src={currentImage}
       />

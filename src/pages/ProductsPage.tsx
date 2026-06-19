@@ -523,7 +523,7 @@ export function ProductsPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_26rem]">
-        <div className="min-w-0 space-y-4">
+        <div className="order-2 min-w-0 space-y-4 xl:order-1">
           <div className="rounded-lg border border-line bg-white p-4 shadow-soft">
             <FormField
               autoCapitalize="none"
@@ -549,7 +549,7 @@ export function ProductsPage() {
           ) : null}
         </div>
 
-        <aside className="rounded-lg border border-line bg-white p-4 shadow-soft">
+        <aside className="order-1 rounded-lg border border-line bg-white p-4 shadow-soft xl:order-2">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-extrabold uppercase text-clay">{isEditing ? 'Editar' : 'Cadastro'}</p>
