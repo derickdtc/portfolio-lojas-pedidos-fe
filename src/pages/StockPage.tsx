@@ -337,7 +337,7 @@ function ProductImageViewer({
     >
       <button
         aria-label="Fechar imagem"
-        className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-danger shadow-soft transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
         onClick={onClose}
         type="button"
       >
@@ -347,7 +347,7 @@ function ProductImageViewer({
       {hasMultipleImages ? (
         <button
           aria-label="Imagem anterior"
-          className="absolute left-3 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:left-6"
+          className="absolute left-3 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/85 text-[#0f5f68] shadow-soft transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0f5f68] sm:left-6"
           onClick={(event) => {
             event.stopPropagation();
             onPrevious();
@@ -368,7 +368,7 @@ function ProductImageViewer({
       {hasMultipleImages ? (
         <button
           aria-label="Próxima imagem"
-          className="absolute right-3 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:right-6"
+          className="absolute right-3 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/85 text-[#0f5f68] shadow-soft transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0f5f68] sm:right-6"
           onClick={(event) => {
             event.stopPropagation();
             onNext();
