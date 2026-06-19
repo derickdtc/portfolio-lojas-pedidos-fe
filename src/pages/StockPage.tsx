@@ -1,4 +1,4 @@
-import { Edit3, Minus, Plus, RefreshCw, Save, Search, Send, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit3, Minus, Plus, RefreshCw, Save, Search, Send, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { IconButton } from '../components/ui/IconButton';
 import { FormField } from '../components/ui/FormField';
+import { ProductImageSlot } from '../components/products/ProductImageSlot';
 import { useAuth } from '../contexts/AuthContext';
 import { getApiErrorMessage } from '../services/api';
 import { createOrder, updateOrder } from '../services/orderService';
@@ -32,11 +33,20 @@ type StockPageLocationState = {
   orderEditDraft?: OrderEditDraft;
 };
 
+type ImageViewerState = {
+  product: StockProduct;
+  imageIndex: number;
+};
+
 const stockToneClasses = {
   high: 'bg-[#e2f2e8]',
   medium: 'bg-[#fff0c7]',
   low: 'bg-[#ffe0dc]'
 };
+
+function getProductImageUrls(product: StockProduct) {
+  return [product.imageUrl1, product.imageUrl2].map((url) => url?.trim()).filter(Boolean) as string[];
+}
 
 function normalizePrice(value: string) {
   const price = Number(value.replace(',', '.'));
@@ -176,6 +186,7 @@ function PriceInput({
 function ProductCard({
   onChangeQuantity,
   onChangeSalePrice,
+  onOpenImages,
   product,
   salePrice,
   selectedQuantity
@@ -185,43 +196,71 @@ function ProductCard({
   selectedQuantity: number;
   onChangeQuantity: (quantity: number) => void;
   onChangeSalePrice: (salePrice: number) => void;
+  onOpenImages: (product: StockProduct) => void;
 }) {
   const stockTone = getStockTone(product.stockBalance);
+  const hasImages = getProductImageUrls(product).length > 0;
   const [isEditingPrice, setIsEditingPrice] = useState(false);
 
   return (
     <article className="rounded-lg border border-line bg-white p-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-extrabold leading-5 text-ink">{product.description}</h2>
-          <p className="mt-0.5 text-[11px] font-bold text-[#7d877f]">
-            Código {product.itemCode}
-            {product.reference ? ` · Ref. ${product.reference}` : ''}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <IconButton
-            className="!h-8 !w-8"
-            icon={<Edit3 size={15} />}
-            label={`Editar preço de ${product.description}`}
-            onClick={() => setIsEditingPrice(true)}
-            tone="light"
-          />
-          {isEditingPrice ? (
-            <PriceInput
-              ariaLabel={`Preço de ${product.description}`}
-              className="h-8 w-24 rounded-lg border border-line bg-cream px-2 text-right text-xs font-black text-ink outline-none focus:border-forest focus:ring-2 focus:ring-forest/15"
-              onChange={onChangeSalePrice}
-              value={salePrice}
+      <div className="flex items-start gap-3">
+        {hasImages ? (
+          <button
+            className="shrink-0 rounded-lg outline-none transition hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+            onClick={() => onOpenImages(product)}
+            type="button"
+          >
+            <ProductImageSlot
+              alt={product.description}
+              className="h-20 w-20"
+              src={product.imageUrl1}
             />
-          ) : (
-            <p className="text-right text-xs font-black text-forest sm:text-sm">{formatCurrency(salePrice)}</p>
-          )}
+          </button>
+        ) : (
+          <ProductImageSlot
+            alt={product.description}
+            className="h-20 w-20 shrink-0"
+            src={product.imageUrl1}
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-extrabold leading-5 text-ink">{product.description}</h2>
+              <p className="mt-0.5 text-[11px] font-bold text-[#7d877f]">
+                Código {product.itemCode}
+                {product.reference ? ` · Ref. ${product.reference}` : ''}
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-1.5">
+              <IconButton
+                className="!h-8 !w-8"
+                icon={<Edit3 size={15} />}
+                label={`Editar preço de ${product.description}`}
+                onClick={() => setIsEditingPrice(true)}
+                tone="light"
+              />
+              {isEditingPrice ? (
+                <PriceInput
+                  ariaLabel={`Preço de ${product.description}`}
+                  className="h-8 w-24 rounded-lg border border-line bg-cream px-2 text-right text-xs font-black text-ink outline-none focus:border-forest focus:ring-2 focus:ring-forest/15"
+                  onChange={onChangeSalePrice}
+                  value={salePrice}
+                />
+              ) : (
+                <p className="text-right text-xs font-black text-forest sm:text-sm">{formatCurrency(salePrice)}</p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="mt-2 flex items-start justify-between gap-3">
-        <p className="min-w-0 flex-1 text-xs font-extrabold text-moss">NCM {product.ncm || '-'}</p>
+        <div className="min-w-0 flex-1 space-y-2 pt-1 text-xs font-extrabold text-moss">
+          <p>NCM {product.ncm || '-'}</p>
+          <p>CFOP {product.cfop || '-'}</p>
+        </div>
         <div className="grid shrink-0 grid-cols-[2rem_3rem_2rem] grid-rows-[1.75rem_2rem] items-center justify-items-center gap-x-1.5 gap-y-2">
           <span
             className={`col-start-2 row-start-1 flex h-7 w-12 items-center justify-center rounded-lg px-2 text-center text-xs font-black text-ink ${stockToneClasses[stockTone]}`}
@@ -267,6 +306,97 @@ function ProductCard({
   );
 }
 
+function ProductImageViewer({
+  imageIndex,
+  images,
+  onClose,
+  onNext,
+  onPrevious,
+  product
+}: {
+  product: StockProduct;
+  images: string[];
+  imageIndex: number;
+  onClose: () => void;
+  onNext: () => void;
+  onPrevious: () => void;
+}) {
+  const hasMultipleImages = images.length > 1;
+  const currentImage = images[imageIndex];
+
+  if (!currentImage) {
+    return null;
+  }
+
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/92 p-4"
+      onClick={onClose}
+      role="dialog"
+    >
+      <button
+        aria-label="Fechar imagem"
+        className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        onClick={onClose}
+        type="button"
+      >
+        <X size={24} />
+      </button>
+
+      {hasMultipleImages ? (
+        <button
+          aria-label="Imagem anterior"
+          className="absolute left-3 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:left-6"
+          onClick={(event) => {
+            event.stopPropagation();
+            onPrevious();
+          }}
+          type="button"
+        >
+          <ChevronLeft size={30} />
+        </button>
+      ) : null}
+
+      <img
+        alt={`${product.description} - imagem ${imageIndex + 1}`}
+        className="max-h-[88vh] max-w-[92vw] rounded-lg object-contain"
+        onClick={(event) => event.stopPropagation()}
+        src={currentImage}
+      />
+
+      {hasMultipleImages ? (
+        <button
+          aria-label="Próxima imagem"
+          className="absolute right-3 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:right-6"
+          onClick={(event) => {
+            event.stopPropagation();
+            onNext();
+          }}
+          type="button"
+        >
+          <ChevronRight size={30} />
+        </button>
+      ) : null}
+
+      {hasMultipleImages ? (
+        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">
+          {images.map((image, index) => (
+            <span
+              aria-label={`Imagem ${index + 1}`}
+              className={[
+                'h-2.5 w-2.5 rounded-full',
+                index === imageIndex ? 'bg-white' : 'bg-white/35'
+              ].join(' ')}
+              key={image}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function StockPage() {
   const location = useLocation();
   const { user } = useAuth();
@@ -285,6 +415,12 @@ export function StockPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [imageViewer, setImageViewer] = useState<ImageViewerState | null>(null);
+
+  const viewerImages = useMemo(() => (imageViewer ? getProductImageUrls(imageViewer.product) : []), [imageViewer]);
+  const viewerImageIndex = imageViewer
+    ? Math.min(imageViewer.imageIndex, Math.max(viewerImages.length - 1, 0))
+    : 0;
 
   const loadProducts = useCallback(async (showRefresh = false) => {
     if (showRefresh) {
@@ -308,6 +444,38 @@ export function StockPage() {
   useEffect(() => {
     void loadProducts();
   }, [loadProducts]);
+
+  useEffect(() => {
+    if (!imageViewer) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setImageViewer(null);
+        return;
+      }
+
+      if (event.key === 'ArrowLeft') {
+        changeViewerImage(-1);
+        return;
+      }
+
+      if (event.key === 'ArrowRight') {
+        changeViewerImage(1);
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [imageViewer]);
 
   useEffect(() => {
     if (hasLoadedEditDraftRef.current) {
@@ -420,6 +588,33 @@ export function StockPage() {
       ...current,
       [productId]: salePrice
     }));
+  }
+
+  function openProductImages(product: StockProduct) {
+    if (getProductImageUrls(product).length === 0) {
+      return;
+    }
+
+    setImageViewer({ product, imageIndex: 0 });
+  }
+
+  function changeViewerImage(direction: -1 | 1) {
+    setImageViewer((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const images = getProductImageUrls(current.product);
+
+      if (images.length <= 1) {
+        return current;
+      }
+
+      return {
+        ...current,
+        imageIndex: (current.imageIndex + direction + images.length) % images.length
+      };
+    });
   }
 
   async function handleSubmitOrder() {
@@ -653,6 +848,7 @@ export function StockPage() {
                 key={product.id}
                 onChangeQuantity={(quantity) => setProductQuantity(product, quantity)}
                 onChangeSalePrice={(salePrice) => setProductSalePrice(product.id, salePrice)}
+                onOpenImages={openProductImages}
                 product={product}
                 salePrice={salePriceOverrides[product.id] ?? product.salePrice}
                 selectedQuantity={selectedQuantities[product.id] ?? 0}
@@ -724,6 +920,17 @@ export function StockPage() {
           </div>
         </aside>
       </div>
+
+      {imageViewer && viewerImages.length > 0 ? (
+        <ProductImageViewer
+          imageIndex={viewerImageIndex}
+          images={viewerImages}
+          onClose={() => setImageViewer(null)}
+          onNext={() => changeViewerImage(1)}
+          onPrevious={() => changeViewerImage(-1)}
+          product={imageViewer.product}
+        />
+      ) : null}
     </section>
   );
 }

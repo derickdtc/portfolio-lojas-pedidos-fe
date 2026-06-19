@@ -1,4 +1,4 @@
-import { LogOut, Package, ReceiptText, Upload } from 'lucide-react';
+import { Boxes, LogOut, Package, ReceiptText, Upload } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,13 +6,14 @@ import { IconButton } from '../ui/IconButton';
 
 const navItems = [
   { to: '/', label: 'Estoque', icon: Package },
+  { to: '/produtos', label: 'Produtos', icon: Boxes },
   { to: '/pedidos', label: 'Pedidos', icon: ReceiptText },
   { to: '/importar', label: 'Importar', icon: Upload }
 ];
 
 function Navigation({ compact = false }: { compact?: boolean }) {
   return (
-    <nav className={compact ? 'grid grid-cols-3 gap-1' : 'space-y-2'}>
+    <nav className={compact ? 'grid grid-cols-4 gap-1' : 'space-y-2'}>
       {navItems.map((item) => {
         const Icon = item.icon;
 

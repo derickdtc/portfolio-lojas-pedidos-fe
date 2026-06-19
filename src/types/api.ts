@@ -32,7 +32,15 @@ export type StockProduct = {
   ncm: string;
   cst: string;
   reference: string;
+  imageUrl1?: string | null;
+  imageKey1?: string | null;
+  imageUrl2?: string | null;
+  imageKey2?: string | null;
 };
+
+export type ProductImageFields = Pick<StockProduct, 'imageUrl1' | 'imageKey1' | 'imageUrl2' | 'imageKey2'>;
+
+export type ProductRequest = Omit<StockProduct, 'id'>;
 
 export type ProductImportResponse = {
   imported: number;
