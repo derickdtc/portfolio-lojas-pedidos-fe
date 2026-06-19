@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ImportPage } from '../pages/ImportPage';
 import { LoginPage } from '../pages/LoginPage';
 import { OrdersPage } from '../pages/OrdersPage';
+import { ProductsPage } from '../pages/ProductsPage';
 import { StockPage } from '../pages/StockPage';
 
 function ProtectedRoute() {
@@ -55,6 +56,7 @@ export function AppRoutes() {
       />
       <Route element={<ProtectedRoute />}>
         <Route element={<StockPage />} index />
+        <Route element={<ProductsPage />} path="/produtos" />
         <Route element={<OrdersPage />} path="/pedidos" />
         <Route element={<ImportPage />} path="/importar" />
       </Route>
