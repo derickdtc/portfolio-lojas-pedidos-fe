@@ -112,9 +112,12 @@ O Vite exibirá no terminal a URL local para abrir no navegador.
 | --- | --- |
 | `.env.example` | Modelo de configuração local. |
 | `.env.local` | Configuração local, ignorada pelo Git. |
-| `.env.production` | Variáveis aplicadas no build de produção. |
+| `.env.production.example` | Modelo seguro para a configuração de produção. |
+| `.env.production.local` | Configuração de produção para builds locais, ignorada pelo Git. |
 
-> Nunca versione credenciais ou dados sensíveis em arquivos `.env`.
+Para o deploy, configure `VITE_API_BASE_URL` como variável de ambiente no provedor de hospedagem. Em um build local de produção, copie `.env.production.example` para `.env.production.local` e substitua o valor pelo endpoint do ambiente correspondente.
+
+> Nunca versione credenciais, tokens ou endpoints privados em arquivos `.env`. Arquivos com valores reais devem permanecer fora do Git.
 
 ## Repositório
 
