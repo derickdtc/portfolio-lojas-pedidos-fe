@@ -74,17 +74,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(storedSession.token);
     setSession(storedSession);
 
-    authService
+    void authService
       .getCurrentUser()
       .then((user) => {
         setSession((current) => (current ? { ...current, user } : current));
       })
       .catch(() => {
         logout();
-      })
-      .finally(() => {
-        setIsLoading(false);
       });
+
+    // The stored token is already configured above, so route data can load while
+    // this validation request refreshes the persisted user information.
+    setIsLoading(false);
   }, [logout]);
 
   useEffect(() => {
